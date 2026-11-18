@@ -27,52 +27,93 @@ entrega2/
 ├── main.py             # Script de demonstração funcional
 ├── test_auth.py        # Suíte de testes automatizados de segurança
 └── README.md           # Documentação técnica do repositório
-
 ```
 
 ---
 
 ## Como Executar
 
-### 1\. Criar e Ativar o Ambiente Virtual (`.venv`)
+### 1. Criar e Ativar o Ambiente Virtual (`.venv`)
 
 **No Windows (PowerShell):**
 
-```
+```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
 ```
 
-**No Linux/macOS:**
+**No Linux:**
 
-```
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-
 ```
 
-### 2\. Instalar Dependências
+**No macOS (recomendado — com `uv`):**
+
+O `python3` que acompanha o macOS é apenas um atalho que aciona o `xcode-select`. Se as *Command Line Tools* não estiverem instaladas, o comando falha com:
 
 ```
+xcode-select: note: No developer tools were found, requesting install.
+```
+
+Nesse caso, use o [`uv`](https://docs.astral.sh/uv/), que dispensa as ferramentas da Apple:
+
+```bash
+# Instalar o uv (se ainda não tiver)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Criar e ativar o ambiente virtual
+uv venv .venv
+source .venv/bin/activate
+```
+
+**No macOS (alternativa — com `python3` do sistema):**
+
+```bash
+# Instalar as Command Line Tools (necessário uma única vez)
+xcode-select --install
+
+# Criar e ativar o ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+> Se a instalação das *Command Line Tools* falhar com a mensagem
+> *"Não foi possível instalar o software porque no momento esse item não está disponível no servidor de Atualização de Software"*,
+> baixe o pacote manualmente em [developer.apple.com/download/all](https://developer.apple.com/download/all/)
+> (procure por "Command Line Tools for Xcode") ou utilize o `uv` como descrito acima.
+
+### 2. Instalar Dependências
+
+**Com `pip` (ambiente virtual ativado):**
+
+```bash
 pip install -r requirements.txt
-
 ```
 
-### 3\. Executar a Demonstração Funcional
+**Com `uv`:**
 
+```bash
+uv pip install -r requirements.txt
 ```
+
+### 3. Executar a Demonstração Funcional
+
+```bash
 python main.py
-
+# ou, com uv (sem precisar ativar o ambiente)
+uv run python main.py
 ```
 
-### 4\. Executar os Testes Automatizados
+### 4. Executar os Testes Automatizados
 
-```
+```bash
 python -m unittest test_auth.py -v
 # ou
 pytest -v
-
+# ou, com uv
+uv run python -m unittest test_auth.py -v
 ```
 
 ---
