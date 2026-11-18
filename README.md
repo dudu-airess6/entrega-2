@@ -2,11 +2,11 @@
 
 Este repositório contém a implementação da **Entrega 2** do Projeto Integrador de Segurança da Informação (Universidade Tiradentes — UNIT).
 
-## 🚀 Escopo do Projeto
+## Escopo do Projeto
 
 O objetivo desta entrega é implementar um mecanismo seguro de **cadastramento e autenticação de usuários**, eliminando o armazenamento de senhas em texto puro ou o uso de hashes vulneráveis (como SHA-256 simples).
 
-### 🛠️ Tecnologias e Algoritmos
+### Tecnologias e Algoritmos
 
 * **Linguagem:** Python 3.12+
 * **Módulo de Segurança:** `auth_service.py`
@@ -17,7 +17,7 @@ O objetivo desta entrega é implementar um mecanismo seguro de **cadastramento e
 
 ---
 
-## 📁 Estrutura do Repositório
+## Estrutura do Repositório
 
 ```
 entrega2/
@@ -32,7 +32,7 @@ entrega2/
 
 ---
 
-## 🧪 Como Executar
+## Como Executar
 
 ### 1\. Criar e Ativar o Ambiente Virtual (`.venv`)
 
@@ -77,7 +77,7 @@ pytest -v
 
 ---
 
-## 🛡️ Alinhamento com Padrões e Normas
+## Alinhamento com Padrões e Normas
 
 * **OWASP Top 10:2025:** Categoria **A07 (Falhas de Autenticação)** e **A04 (Falhas Criptográficas)**.
 * **OWASP ASVS 5.0:** Requisitos **11.4.1 (L1)**, **11.4.2 (L2 - KDF lenta com Salt)**, **6.2.1 (L1)** e **6.2.12 (L2)**.
