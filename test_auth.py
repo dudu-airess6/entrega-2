@@ -1,93 +1,72 @@
-import os
-import hmac
+import unittest
 import hashlib
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.exceptions import InvalidKey
 
-class AuthService:
+from auth_service import AuthService
+
+
+class TestAuthService(unittest.TestCase):
     """
-    Serviço de Autenticação Segura (Entrega 2)
-    Utiliza KDF lenta (scrypt / Argon2 / PBKDF2) com Salt aleatório por usuário 
-    e verificação em tempo constante (proteção contra timing attacks).
+    Suíte de Testes Automatizados para a Entrega 2 (Hash e Autenticação Segura)
+    Covers: OWASP Top 10 A07/A04, OWASP ASVS 5.0 (11.4.1, 11.4.2) e ISO/IEC 27002 (5.17, 8.5)
     """
 
-    def __init__(self):
-        # Base de dados simulada em memória: { username: { "salt": bytes, "password_hash": bytes } }
-        self._db = {}
+    def setUp(self):
+        self.auth = AuthService()
 
-    @staticmethod
-    def _gerar_salt(tamanho: int = 16) -> bytes:
-        """Gera um salt criptograficamente seguro utilizando CSPRNG."""
-        return os.urandom(tamanho)
+    def test_cadastro_autenticacao_sucesso(self):
+        """Caso de Sucesso: Cadastra usuário e autentica com a senha correta."""
+        self.auth.cadastrar_usuario("alice", "SenhaSegura!2026")
+        resultado = self.auth.autenticar_usuario("alice", "SenhaSegura!2026")
+        self.assertTrue(resultado, "A autenticação com a senha correta deve retornar True.")
 
-    @classmethod
-    def derivar_hash_senha(cls, senha: str, salt: bytes) -> bytes:
+    def test_falha_senha_incorreta(self):
+        """Caso de Falha: Tentativa de login com senha incorreta deve ser rejeitada."""
+        self.auth.cadastrar_usuario("bob", "SenhaValida123")
+        resultado = self.auth.autenticar_usuario("bob", "SenhaInvalida456")
+        self.assertFalse(resultado, "A autenticação com senha incorreta deve retornar False.")
+
+    def test_falha_usuario_inexistente(self):
+        """Caso de Falha: Tentativa de login com usuário não cadastrado deve falhar."""
+        resultado = self.auth.autenticar_usuario("nao_existe", "SenhaQualquer")
+        self.assertFalse(resultado, "Usuário inexistente deve falhar na autenticação.")
+
+    def test_unicidade_salts_e_hashes(self):
         """
-        Deriva o hash da senha utilizando scrypt (OWASP ASVS 5.0 - Requisito 11.4.2).
-        Parâmetros de custo recomendados:
-        - n=16384 (2^14): Custo de memória/CPU
-        - r=8: Tamanho do bloco
-        - p=1: Paralelização
-        - length=32: Tamanho da chave derivada (256 bits)
+        Garantia de Segurança: Duas contas cadastradas com a MESMA SENHA
+        devem possuir SALTS e HASHES DIFERENTES no banco de dados,
+        invalidando ataques por Tabelas Rainbow / Pré-computadas.
         """
-        kdf = Scrypt(
-            salt=salt,
-            length=32,
-            n=16384,
-            r=8,
-            p=1
+        senha_comum = "SenhaIgual123!"
+        self.auth.cadastrar_usuario("user1", senha_comum)
+        self.auth.cadastrar_usuario("user2", senha_comum)
+
+        reg1 = self.auth.obter_registro_protegido("user1")
+        reg2 = self.auth.obter_registro_protegido("user2")
+
+        self.assertNotEqual(
+            reg1["salt_hex"], reg2["salt_hex"],
+            "Salts devem ser únicos e gerados aleatoriamente para cada usuário."
         )
-        return kdf.derive(senha.encode('utf-8'))
+        self.assertNotEqual(
+            reg1["hash_hex"], reg2["hash_hex"],
+            "Hashes derivados de senhas iguais devem ser diferentes devido ao salt."
+        )
 
-    def cadastrar_usuario(self, username: str, senha: str) -> bool:
+    def test_inadequacao_sha256_puro(self):
         """
-        Cadastra um novo usuário armazenando o salt e o hash derivado (NUNCA a senha em texto puro).
+        Fundamentação Teórica: Demonstra por que SHA-256 isolado sem KDF/salt é inadequado.
+        SHA-256 é um hash genérico e ultrarrápido (vulnerável a ataques de força bruta/GPU).
         """
-        if not username or not senha:
-            raise ValueError("Nome de usuário e senha não podem ser vazios.")
-        
-        if username in self._db:
-            raise ValueError(f"Usuário '{username}' já existe no sistema.")
+        senha = "senha_simples_123"
 
-        # Gerar salt exclusivo para este usuário
-        salt = self._gerar_salt()
-        # Derivar o hash da senha usando a KDF lenta
-        password_hash = self.derivar_hash_senha(senha, salt)
+        sha256_hash1 = hashlib.sha256(senha.encode()).hexdigest()
+        sha256_hash2 = hashlib.sha256(senha.encode()).hexdigest()
 
-        # Armazenar salt e hash
-        self._db[username] = {
-            "salt": salt,
-            "password_hash": password_hash
-        }
-        return True
+        self.assertEqual(
+            sha256_hash1, sha256_hash2,
+            "SHA-256 puro é determinístico e vulnerável a tabelas pré-computadas."
+        )
 
-    def autenticar_usuario(self, username: str, senha: str) -> bool:
-        """
-        Autentica o usuário recalculando o hash com o mesmo salt e realizando 
-        comparação em tempo constante para evitar ataques de temporização (Timing Attacks).
-        """
-        if username not in self._db:
-            # Para evitar enumeração de usuários por timing, executamos uma comparação dummy
-            self.derivar_hash_senha("dummy_password", b"dummy_salt_12345")
-            return False
 
-        registro = self._db[username]
-        salt = registro["salt"]
-        hash_esperado = registro["password_hash"]
-
-        # Recalcular hash da senha fornecida
-        hash_calculado = self.derivar_hash_senha(senha, salt)
-
-        # Comparação em tempo constante via hmac.compare_digest
-        return hmac.compare_digest(hash_calculado, hash_esperado)
-
-    def obter_registro_protegido(self, username: str) -> dict:
-        """Retorna o registro público/protegido do banco para fins de auditoria/evidência."""
-        if username not in self._db:
-            return None
-        registro = self._db[username]
-        return {
-            "username": username,
-            "salt_hex": registro["salt"].hex(),
-            "hash_hex": registro["password_hash"].hex()
-        }
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
